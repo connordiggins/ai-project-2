@@ -20,11 +20,11 @@ from keras.optimizers import Adam
 def getTrainingData():
     
     # create a Ms Pacman environment
-    env = gym.make('MsPacman-v0')
+    env = gym.make('MsPacman-ram-v0')
     env.reset()
     
     score_requirement = 0 #threshold for going into training model
-    intial_games = 2 #how many games the training data comes from
+    intial_games = 10 #how many games the training data comes from
     
     training_data = [] #data to pass into model
     accepted_scores = [] #scores recorded for training data
@@ -37,7 +37,7 @@ def getTrainingData():
         while not done:
                         
             # choose a random action
-            action = random.randrange(8)
+            action = random.randrange(9)
                     
             # get state data from the environment
             observation, reward, done, info = env.step(action)
@@ -63,25 +63,23 @@ def getTrainingData():
         env.reset()
 
     print(accepted_scores)
-    
-    # make the observations one dimensional
-    for i in training_data:
-        i[0] = i[0].flatten()
                 
     return training_data
 
 def build_model(input_size, output_size):
     model = Sequential()
-    model.add(Dense(128, input_dim=input_size, activation='relu'))
-    model.add(Dense(52, activation='relu'))
+    print("INPUT SIZE")
+    print(input_size)
+    model.add(Dense(input_size, activation='relu'))
+    #model.add(Dense(52, activation='relu'))
     model.add(Dense(output_size, activation='linear'))
     model.compile(loss='mse', optimizer=Adam())
     return model
 
 def train_model(training_data):
-    X = np.array([i[0] for i in training_data]) # observation variable
+    X = np.array([i[0] for i in training_data]).reshape(-1, 128) # observation variable
     y = np.array([i[1] for i in training_data]) # action variable
-    model = build_model(input_size=len(X[0]), output_size=len(y))
+    model = build_model(input_size=len(X[0]), output_size=1)
     
     model.fit(X, y, epochs=10)
     return model
@@ -89,7 +87,7 @@ def train_model(training_data):
 def play_game(model):
     
     # create a Ms Pacman environment
-    env = gym.make('MsPacman-v0')
+    env = gym.make('MsPacman-ram-v0')
     env.reset()
     
     scores = [] # people's scores
@@ -103,13 +101,13 @@ def play_game(model):
             if len(prev_obs)==0:
                 action = random.randrange(9)
             else:
-                print(prev_obs)
-                print(len(prev_obs))
-                print(model.predict(prev_obs))
-                action = model.predict(prev_obs)
+                action = int(model.predict(prev_obs.reshape(-1, len(prev_obs))))
             
+            print(action)
+            if(action > 8):
+                action = 8
             new_observation, reward, done, info = env.step(action)
-            prev_obs = new_observation.flatten()
+            prev_obs = new_observation
             score+=reward
             if done:
                 break
